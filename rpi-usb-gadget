@@ -42,7 +42,7 @@ SUPPORTED_DEVICES="$(printf '%s\n' 'Raspberry Pi Zero' 'Raspberry Pi Zero W' 'Ra
 have_systemctl() { command -v systemctl >/dev/null 2>&1; }
 
 # /sys/class/udc is populated when a UDC driver (dwc2 in peripheral mode) is active
-overlay_active() { [ -n "$(ls /sys/class/udc/ 2>/dev/null)" ]; }
+overlay_active() { set -- /sys/class/udc/*; [ -e "$1" ]; }
 
 cfg_has_overlay() {
     grep -q "^${OVERLAY_LINE}\$" "$CFG_FW" 2>/dev/null || \
