@@ -302,6 +302,8 @@ check_supported() {
     fi
 }
 
+NEED_REBOOT=false
+
 if [ "$TURN_ON" = false ]; then
     printf 'Turning \033[31moff\033[0m USB Gadget mode\n'
 
@@ -320,6 +322,10 @@ if [ "$TURN_ON" = false ]; then
     rm -f "$MODS_CONF"
     sed -i "\|^$OVERLAY_LINE\$|d" "$CFG_FW" 2>/dev/null || true
     sed -i "\|^$OVERLAY_LINE\$|d" "$CFG_LEGACY" 2>/dev/null || true
+    # UDC stays bound until reboot
+    if overlay_active; then
+        NEED_REBOOT=true
+    fi
 
 else
     check_supported || exit 1
@@ -327,15 +333,15 @@ else
     printf 'Turning \033[32mon\033[0m USB Gadget mode\n'
     printf "g_ether\n" > "$MODS_CONF"
     modprobe g_ether 2>/dev/null || true
-    NEED_REBOOT=false
     if ! cfg_has_overlay; then
         # ensure overlay present once
         sed -i "\|^$OVERLAY_LINE\$|d" "$CFG_FW" 2>/dev/null || true
         sed -i "\|^$OVERLAY_LINE\$|d" "$CFG_LEGACY" 2>/dev/null || true
         printf '%s\n' "$OVERLAY_LINE" >> "$CFG_FW" 2>/dev/null || printf '%s\n' "$OVERLAY_LINE" >> "$CFG_LEGACY"
-        if ! overlay_active; then
-            NEED_REBOOT=true
-        fi
+    fi
+    # config.txt may already carry the overlay from a run that was never rebooted
+    if ! overlay_active; then
+        NEED_REBOOT=true
     fi
 
     # NetworkManager: dnsmasq + client profile + shared profile
@@ -359,4 +365,6 @@ else
     fi
 fi
 
-[ "${NEED_REBOOT:-false}" = true ] && printf "Reboot to apply changes\n" || true
+if [ "$NEED_REBOOT" = true ]; then
+    printf "Reboot to apply changes\n"
+fi
